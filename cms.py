@@ -16,11 +16,11 @@ if not os.path.exists(CONTENT_FOLDER):
     os.mkdir(CONTENT_FOLDER)
 
 def list_content(folder: str, page: int):
-    filenames = os.listdir(folder)
+    filenames = [fn for fn in os.listdir(folder) if not fn[0]=="."]
     creation_times = [datetime.datetime.fromtimestamp(os.path.getmtime(os.path.join(folder,f))) for f in filenames]
 
     entries = list(zip(filenames, creation_times))
-    entries.sort(key = lambda e: e[1])j
+    entries.sort(key = lambda e: e[1])
 
     entries = entries[page*PAGESIZE:(1+page)*PAGESIZE]
 
