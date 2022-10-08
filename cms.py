@@ -8,6 +8,8 @@ import datetime
 import json
 from wsgiref.simple_server import make_server
 
+SERVER_TOKEN = os.getenv("CMS_SERVER_TOKEN")
+assert SERVER_TOKEN is not None
 CONTENT_FOLDER = os.getenv("CMS_CONTENT_FOLDER","content") 
 PAGESIZE = 5
 ISOSTRFTIME = "%Y-%m-%dT%H:%M:%S%z"
@@ -47,11 +49,16 @@ def cms(env, start_response):
 
     if env["REQUEST_METHOD"] == "POST":
         try:
+            auth = query_parameters.get("token")[0]
+            assert auth == SERVER_TOKEN
             data = json.loads(env["wsgi.input"].read(int(env["CONTENT_LENGTH"])))
             write_content(CONTENT_FOLDER, data["title"], data["content"])
         except (json.JSONDecodeError, KeyError):
             status = "400 BAD REQUEST"
             data = {"message": "Bad data posted POSTed"}
+        except AssertionError:
+            status = "403 ACCESS DENIED"
+            data = {"message": "Bad token"}
 
     elif env["REQUEST_METHOD"] == "PUT":
         try:

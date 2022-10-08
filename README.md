@@ -6,7 +6,7 @@ This is a very simple "CMS" application that serves content you post.
 ## Run
 
 ```
-python3.10 cms.py
+CMS_SERVER_TOKEN=mysecret python3.10 cms.py
 ```
 
 ## Try
@@ -19,7 +19,7 @@ Use `httpie`:
 ```
 
 ```
->>> http -j :8000 content="My new blog post" title="A post"
+>>> http -j :8000?token=mysecret content="My new blog post" title="A post"
 {"title":"A post", "content": "My new blog post"}
 ```
 
