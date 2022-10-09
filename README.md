@@ -32,3 +32,7 @@ Use `httpie`:
 >>> http ":8000/A post"
 {"title":"A post", "content": "My new blog post"}
 ```
+
+## Serve
+
+Serve the www/html, www/css and www/js folders. If using Nginx, use the provided default.conf file.

@@ -1,2 +1,10 @@
+
 content/*
 !content/.gitkeep
+
+www/html/*
+!www/html/.gitkeep
+!www/html/entries
+www/html/entries/*
+!www/html/entries/.gitkeep
+.env

@@ -1,6 +1,6 @@
 """Bad Ideas CMS
 
-This is a CRUD WSGI application for managing content. Content is saved in files and served as JSON.
+This is a CRUD WSGI application for managing content. Content is saved in files, and rendered to HTML that can be served.
 """
 import urllib
 import os
@@ -8,9 +8,10 @@ import datetime
 import json
 from wsgiref.simple_server import make_server
 
-SERVER_TOKEN = os.getenv("CMS_SERVER_TOKEN")
-assert SERVER_TOKEN is not None
+SERVER_TOKEN = os.getenv("CMS_SERVER_TOKEN", "changeme")
+PORT = int(os.getenv("CMS_PORT", 8000))
 CONTENT_FOLDER = os.getenv("CMS_CONTENT_FOLDER","content") 
+HTML_FOLDER = os.getenv("CMS_CONTENT_FOLDER","www/html") 
 PAGESIZE = 5
 ISOSTRFTIME = "%Y-%m-%dT%H:%M:%S%z"
 
@@ -28,14 +29,31 @@ def list_content(folder: str, page: int):
 
     return {"entries": [{"title":f,"created":t.strftime(ISOSTRFTIME)} for f,t in entries]}
 
-def read_content(folder: str,name: str):
-    with open(os.path.join(folder,name)) as f:
-        content = f.read() 
-        return {"content": content, "title": name}
+def render_content(content, script=""):
+    with open("templates/page.html") as f:
+        return f.read().format(content=content, script=script)
 
-def write_content(folder,name,content):
-    with open(os.path.join(folder,name), "w") as f:
+def render_entry(content_folder, html_folder, name):
+    raw_content = read_file(os.path.join(content_folder, name))
+    write_file(os.path.join(html_folder,"entries",name), render_content(raw_content))
+
+def write_entry(content_folder, html_folder, name, content):
+    write_file(os.path.join(content_folder, name), content)
+    write_file(os.path.join(html_folder, "entries", name), render_content(content))
+
+def write_file(path ,content):
+    with open(path, "w") as f:
         f.write(content)
+
+def read_file(path):
+    with open(path) as f:
+        return f.read() 
+
+def read_content(folder, name):
+    return {
+            "title": name,
+            "content": read_file(os.path.join(folder, name))
+        }
 
 def delete_content(folder,name):
     content = read_content(folder,name)
@@ -51,20 +69,22 @@ def cms(env, start_response):
         try:
             auth = query_parameters.get("token")[0]
             assert auth == SERVER_TOKEN
+        except (TypeError, AssertionError):
+            start_response("403 ACCESS DENIED", [])
+            return [b""]
+
+        try:
             data = json.loads(env["wsgi.input"].read(int(env["CONTENT_LENGTH"])))
-            write_content(CONTENT_FOLDER, data["title"], data["content"])
-        except (json.JSONDecodeError, KeyError):
+            write_entry(CONTENT_FOLDER, HTML_FOLDER, data["title"], data["content"])
+        except (json.JSONDecodeError, KeyError, TypeError):
             status = "400 BAD REQUEST"
             data = {"message": "Bad data posted POSTed"}
-        except AssertionError:
-            status = "403 ACCESS DENIED"
-            data = {"message": "Bad token"}
 
     elif env["REQUEST_METHOD"] == "PUT":
         try:
             destination = env["PATH_INFO"]
             data = json.loads(env["wsgi.input"].read(int(env["CONTENT_LENGTH"])))
-            write_content(CONTENT_FOLDER, destination, data["content"])
+            write_entry(CONTENT_FOLDER, HTML_FOLDER, destination, data["content"])
         except (json.JSONDecodeError, KeyError):
             status = "400 BAD REQUEST"
             data = {"message": "Bad data posted POSTed"}
@@ -86,6 +106,13 @@ def cms(env, start_response):
                 data = {"error":"Not found"}
 
     elif env["REQUEST_METHOD"] == "DELETE":
+        try:
+            auth = query_parameters.get("token")[0]
+            assert auth == SERVER_TOKEN
+        except (TypeError, AssertionError):
+            start_response("403 ACCESS DENIED", [])
+            return [b""]
+
         requested_resource = env["PATH_INFO"][1:]
         if requested_resource == "":
             status = "400 BAD REQUEST"
@@ -104,5 +131,15 @@ def cms(env, start_response):
     start_response(status, [("Content-Type", "application/json")])
     return [json.dumps(data).encode()]
 
-with make_server("", 8000, cms) as httpd:
+os.makedirs(os.path.join(HTML_FOLDER,"entries"), exist_ok=True)
+
+with open(os.path.join(HTML_FOLDER,"index.html"),"w") as f:
+    with open("js/home.js") as script_file:
+        script = script_file.read()
+    f.write(render_content("<ul id=\"posts\"></ul>",script))
+
+for entry in os.listdir(CONTENT_FOLDER):
+    render_entry(CONTENT_FOLDER, HTML_FOLDER, entry)
+
+with make_server("", PORT, cms) as httpd:
     httpd.serve_forever()

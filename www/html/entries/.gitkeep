@@ -1,0 +1,23 @@
+<html>
+   <head>
+      <link rel="stylesheet" href="/style.css">
+   </head>
+   <body>
+      <div id="header">
+         <a href="/"><h1>BadIdeas</h1></a>
+      </div>
+      <div id="content">
+      
+      </div>
+      <div id="footer">
+         <p class="links">
+            <a href="https://www.twitter.com/peder2911" target="page">Twitter</a>
+            <a href="https://www.github.com/peder2911" target="page">Github</a>
+            <a href="mailto:pglandsverk@gmail.com" target="page">Mail</a>
+         </p>
+      </div>
+   </body>
+   <script>
+
+   </script>
+</html>
